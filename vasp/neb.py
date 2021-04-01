@@ -40,7 +40,6 @@ import vasp
 import vasp.exceptions
 from .vasp import log, Vasp
 from .monkeypatch import monkeypatch_class
-from .vasprc import VASPRC
 
 
 @monkeypatch_class(Vasp)
@@ -59,7 +58,7 @@ def get_neb(self, npi=1):
     # check for OUTCAR in each image dir
     for i in range(1, len(self.neb) - 1):
         wf = '{0}/OUTCAR'.format(str(i).zfill(2))
-        wf = os.path.join(self.directory, wf)
+        wf = os.path.join(self.calc_dir, wf)
         if not os.path.exists(wf):
             calc_required = True
             break
@@ -81,8 +80,8 @@ def get_neb(self, npi=1):
         log.debug('NEB calculation required')
         # this creates the directories and files if needed.  write out
         # all the images, including initial and final
-        if not os.path.isdir(self.directory):
-            os.makedirs(self.directory)
+        if not os.path.isdir(self.calc_dir):
+            os.makedirs(self.calc_dir)
 
         self.set(images=len(self.neb) - 2)
 
@@ -99,7 +98,7 @@ def get_neb(self, npi=1):
 
         for i, atoms in enumerate(self.neb):
             # zero-padded directory name
-            image_dir = os.path.join(self.directory, str(i).zfill(2))
+            image_dir = os.path.join(self.calc_dir, str(i).zfill(2))
             if not os.path.isdir(image_dir):
                 # create if needed.
                 log.debug('Creating {}'.format(image_dir))
@@ -115,12 +114,12 @@ def get_neb(self, npi=1):
         # calculation into the end-point directories.
 
         log.debug('Writing initial state db')
-        self.write_db(os.path.join(self.directory,
+        self.write_db(os.path.join(self.calc_dir,
                                    '00/DB.db'),
                       self.neb[0])
 
         log.debug('Writing final state db')
-        self.write_db(os.path.join(self.directory,
+        self.write_db(os.path.join(self.calc_dir,
                                    '{:02}/DB.db'.format(len(self.neb) - 1)),
                       self.neb[-1])
 
@@ -134,20 +133,20 @@ def get_neb(self, npi=1):
     # now we are just retrieving results
     energies = []
     import ase.io
-    atoms0 = ase.io.read(os.path.join(self.directory,
+    atoms0 = ase.io.read(os.path.join(self.calc_dir,
                                       '00',
                                       'DB.db'))
     energies += [atoms0.get_potential_energy()]
 
     for i in range(1, len(self.neb) - 1):
-        atoms = ase.io.read(os.path.join(self.directory,
+        atoms = ase.io.read(os.path.join(self.calc_dir,
                                          str(i).zfill(2),
                                          'CONTCAR'))[self.resort]
         self.neb[i].positions = atoms.positions
         self.neb[i].cell = atoms.cell
 
         energy = None
-        with open(os.path.join(self.directory,
+        with open(os.path.join(self.calc_dir,
                                str(i).zfill(2),
                                'OUTCAR')) as f:
             for line in f:
@@ -156,7 +155,7 @@ def get_neb(self, npi=1):
 
         energies += [energy]
 
-    fname = os.path.join(self.directory,
+    fname = os.path.join(self.calc_dir,
                          '0{}/DB.db'.format(len(self.neb) - 1))
     atoms_end = ase.io.read(fname)
     energies += [atoms_end.get_potential_energy()]

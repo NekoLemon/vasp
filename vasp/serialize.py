@@ -12,15 +12,15 @@ def vasp(self):
     """
     s = 'INCAR'
     s += '\n' + len('INCAR') * "-" + '\n'
-    with open(join(self.directory, 'INCAR')) as f:
+    with open(join(self.calc_dir, 'INCAR')) as f:
         s += f.read() + '\n\n'
 
     s += 'POSCAR\n' + '-' * len('POSCAR') + '\n'
-    with open(join(self.directory, 'POSCAR')) as f:
+    with open(join(self.calc_dir, 'POSCAR')) as f:
         s += f.read() + '\n\n'
 
     s += 'KPOINTS\n' + '-' * len('KPOINTS') + '\n'
-    with open(join(self.directory, 'KPOINTS')) as f:
+    with open(join(self.calc_dir, 'KPOINTS')) as f:
         s += f.read() + '\n\n'
 
     s += 'POTCAR\n' + '-' * len('POTCAR') + '\n'
@@ -34,7 +34,7 @@ setattr(Vasp, 'vasp', property(vasp))
 
 def vasp_json(self):
     """Return a json representation."""
-    json = join(self.directory, 'DB.json')
+    json = join(self.calc_dir, 'DB.json')
     self.write_db(fname=json)
     with open(json) as f:
         s = f.read()
@@ -49,7 +49,7 @@ def vasp_jsonpp(self):
     """Return a pretty-printed json representation."""
     import json
 
-    jsonf = join(self.directory, 'DB.json')
+    jsonf = join(self.calc_dir, 'DB.json')
     self.write_db(fname=jsonf)
     with open(jsonf) as f:
         d = json.loads(f.read())

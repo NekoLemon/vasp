@@ -76,7 +76,7 @@ def write_db(self,
     from ase.db import connect
 
     if fname is None:
-        fname = os.path.join(self.directory, 'DB.db')
+        fname = os.path.join(self.calc_dir, 'DB.db')
 
     # Get the atoms object from the calculator
     if atoms is None:
@@ -85,7 +85,7 @@ def write_db(self,
     # Get keys-value-pairs from directory name.
     # Collect only path names with 'parser' in them.
     if parser is not None:
-        path = [x for x in self.directory.split('/') if parser in x]
+        path = [x for x in self.calc_dir.split('/') if parser in x]
 
         for key_value in path:
             key = key_value.split(parser)[0]
@@ -107,7 +107,7 @@ def write_db(self,
             # Add directory keys
             keys[key] = value
 
-    data.update({'path': self.directory,
+    data.update({'path': self.calc_dir,
                  'version': self.version,
                  'resort': self.resort,
                  'parameters': self.parameters,
@@ -151,11 +151,11 @@ def write_db(self,
 def write_poscar(self, fname=None):
     """Write the POSCAR file."""
     if fname is None:
-        fname = os.path.join(self.directory, 'POSCAR')
+        fname = os.path.join(self.calc_dir, 'POSCAR')
 
     from ase.io.vasp import write_vasp
     write_vasp(fname,
-               self.atoms_sorted,
+               self.atoms,
                symbol_count=self.symbol_count)
 
 
@@ -170,7 +170,7 @@ def write_incar(self, incar=None):
     """
 
     if incar is None:
-        incar = os.path.join(self.directory, 'INCAR')
+        incar = os.path.join(self.calc_dir, 'INCAR')
 
     incar_keys = list(set(self.parameters) - set(self.special_kwargs))
     d = {key: self.parameters[key] for key in incar_keys}
@@ -178,7 +178,7 @@ def write_incar(self, incar=None):
     with open(incar, 'w') as f:
         f.write('INCAR created by Atomic Simulation Environment\n')
         for key, val in d.items():
-            print(f'"{key}", {val}, {type(val)}')
+            log.debug(f'"{key}", {val}, {type(val)}')
             key = ' ' + key.upper()
             if val is None:
                 # Do not write out None values
@@ -226,7 +226,7 @@ def write_kpoints(self, fname=None):
 
     """
     if fname is None:
-        fname = os.path.join(self.directory, 'KPOINTS')
+        fname = os.path.join(self.calc_dir, 'KPOINTS')
 
     p = self.parameters
 
@@ -308,7 +308,7 @@ def write_potcar(self, fname=None):
 
     """
     if fname is None:
-        fname = os.path.join(self.directory, 'POTCAR')
+        fname = os.path.join(self.calc_dir, 'POTCAR')
 
     with open(fname, 'wb') as potfile:
         for _, pfile, _ in self.ppp_list:

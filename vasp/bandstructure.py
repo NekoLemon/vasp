@@ -43,7 +43,7 @@ def get_bandstructure(self,
 
     # run in non-selfconsistent directory
 
-    wd = os.path.join(self.directory, 'bandstructure')
+    wd = os.path.join(self.calc_dir, 'bandstructure')
     self.clone(wd)
 
     calc = Vasp(wd)

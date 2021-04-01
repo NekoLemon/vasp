@@ -53,7 +53,7 @@ def get_vibrational_modes(self,
     if hasattr(atoms, 'constraints') and self.parameters['ibrion'] == 5:
         # count how many modes to get.
         NMODES = 0
-        f = open(os.path.join(self.directory, 'OUTCAR'))
+        f = open(os.path.join(self.calc_dir, 'OUTCAR'))
         for line in f:
             if ('f' in line and 'THz' in line and 'cm-1' in line):
                 NMODES += 1
@@ -67,7 +67,7 @@ def get_vibrational_modes(self,
     # vectors always come first. if nwrite=3, then there are
     # sqrt(mass) weighted vectors that follow this section
 
-    f = open(os.path.join(self.directory, 'OUTCAR'), 'r')
+    f = open(os.path.join(self.calc_dir, 'OUTCAR'), 'r')
     while True:
         line = f.readline()
         if line.startswith(' Eigenvectors and eigenvalues'
@@ -165,7 +165,7 @@ def get_vibrational_frequencies(self):
 
     frequencies = []
 
-    f = open(os.path.join(self.directory, 'OUTCAR'), 'r')
+    f = open(os.path.join(self.calc_dir, 'OUTCAR'), 'r')
     while True:
         line = f.readline()
         if line.startswith(' Eigenvectors and eigenvalues'
@@ -210,11 +210,11 @@ def get_infrared_intensities(self):
 
     self.update()
 
-    atoms = read(os.path.join(self.directory, 'POSCAR'), format='vasp')
+    atoms = read(os.path.join(self.calc_dir, 'POSCAR'), format='vasp')
     NIONS = len(atoms)
     BORN_NROWS = NIONS * 4 + 1
 
-    with open(os.path.join(self.directory, 'OUTCAR'), 'r') as f:
+    with open(os.path.join(self.calc_dir, 'OUTCAR'), 'r') as f:
         alltext = f.read()
         f.seek(0)
         alllines = f.readlines()

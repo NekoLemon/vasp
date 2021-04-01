@@ -12,7 +12,7 @@ import warnings
 import numpy as np
 import ase
 # from ase.calculators.calculator import Calculator
-from ase.calculators.calculator import FileIOCalculator
+from ase.calculators.vasp.vasp import Vasp as ASE_Vasp
 from ase.io import read
 from ase.io.jsonio import encode
 import json
@@ -21,7 +21,6 @@ import json
 import vasp
 import vasp.exceptions
 from vasp import validate
-from .vasprc import VASPRC
 from .vasp import log
 
 # This is a temporary variable used below to avoid pep8 long line
@@ -56,7 +55,7 @@ def VaspExceptionHandler(calc, exc_type, exc_value, exc_traceback):
     raise
 
 
-class Vasp(FileIOCalculator, object):
+class Vasp(ASE_Vasp, object):
     """Class for doing VASP calculations.
 
     Configurations are in vasp.vasprc
@@ -149,7 +148,6 @@ class Vasp(FileIOCalculator, object):
     NEB = 10
     UNKNOWN = 100
 
-    VASPRC = VASPRC
     log = log
 
     def __init__(self, label,
@@ -216,7 +214,7 @@ class Vasp(FileIOCalculator, object):
         """
         self.kwargs = kwargs
 
-        # set first so self.directory is right
+        # set first so self.calc_dir is right
         self.set_label(label)
         self.debug = debug
         if debug is not None:
@@ -241,7 +239,7 @@ class Vasp(FileIOCalculator, object):
             self.neb = atoms
 
         if atoms is not None and self.neb is None:
-            self.atoms = atoms
+            self._atoms = atoms
 
         # We do not pass kwargs here. Some of the special kwargs
         # cannot be set at this point since they need to know about
@@ -249,11 +247,11 @@ class Vasp(FileIOCalculator, object):
         # existing files if they are there. It calls self.read().
 
         if self.neb:
-            FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
-                                      str(label))
+            ASE_Vasp.__init__(self, restart=restart,
+                                      directory=str(label))
         else:
-            FileIOCalculator.__init__(self, restart, ignore_bad_restart_file,
-                                      str(label), atoms)
+            ASE_Vasp.__init__(self, restart=restart,
+                                      directory=str(label), atoms=atoms)
 
         # The calculator should be up to date with the file
         # system here.
@@ -286,7 +284,7 @@ class Vasp(FileIOCalculator, object):
         # In case no atoms was on file, and one is passed in, we set
         # it here.
 
-        if self.atoms is None and atoms is not None and self.neb is None:
+        if self._atoms is None and atoms is not None and self.neb is None:
             self.sort_atoms(atoms)
         elif self.neb is not None:
             self.sort_atoms(self.neb[0])
@@ -295,7 +293,7 @@ class Vasp(FileIOCalculator, object):
         # these get lost and it causes restart issues
         if atoms is not None and self.neb is None:
             aimm = atoms.get_initial_magnetic_moments()
-            self.atoms.set_initial_magnetic_moments(aimm)
+            self._atoms.set_initial_magnetic_moments(aimm)
 
         # These depend on having atoms already so we set them here.
         if ispin is not None:
@@ -305,7 +303,7 @@ class Vasp(FileIOCalculator, object):
             self.set(**self.set_ldau_luj_dict(ldau_luj))
 
         # Finally run validate functions
-        if VASPRC['validate']:
+        if True:
             for key, val in self.parameters.items():
                 if key in validate.__dict__:
                     f = validate.__dict__[key]
@@ -318,6 +316,8 @@ class Vasp(FileIOCalculator, object):
 
         # We define some classmethods that work on the class
         # Here we redefine some instance methods.
+        self.directory=self.calc_dir
+
         self.run = self._run
         self.abort = self._abort
         self.wait = self._wait
@@ -335,7 +335,7 @@ class Vasp(FileIOCalculator, object):
         if atoms is None:
             log.debug('Atoms was none.')
             return
-        self.atoms = atoms
+        self._atoms = atoms
 
         # Now we sort the atoms and generate the list of POTCARS
         # We end up with ppp = [(index_or_symbol, potcar_file, count)]
@@ -410,19 +410,19 @@ class Vasp(FileIOCalculator, object):
                   sorted([[j, i]
                           for i, j in enumerate(self.get_db('resort'))])]
             from ase.db import connect
-            with connect(os.path.join(self.directory, 'DB.db')) as con:
+            with connect(os.path.join(self.calc_dir, 'DB.db')) as con:
                 tatoms = con.get_atoms(id=1)
                 self.write_db(atoms=tatoms, data={'resort': ns})
                 print('Fixed resort issue in {}. '
                       'You should not see this message'
-                      ' again'.format(self.directory))
+                      ' again'.format(self.calc_dir))
                 self.resort = ns
                 sort_indices = [k[1] for k in
                                 sorted([[j, i]
                                         for i, j in enumerate(ns)])]
 
         self.ppp_list = ppp
-        self.atoms_sorted = atoms[sort_indices]
+        self._atoms_sorted = atoms[sort_indices]
         self.symbol_count = [(x[0] if isinstance(x[0], str)
                               else atoms[x[0]].symbol,
                               x[2]) for x in ppp]
@@ -475,7 +475,7 @@ class Vasp(FileIOCalculator, object):
         """Output function for Jupyter notebooks."""
         from ase.io import write
         atoms = self.get_atoms()
-        atoms_image = os.path.join(self.directory, '_repr_html.png')
+        atoms_image = os.path.join(self.calc_dir, '_repr_html.png')
         path = os.path.relpath(atoms_image, os.getcwd())
         write(atoms_image,
               atoms, show_unit_cell=2)
@@ -502,7 +502,7 @@ class Vasp(FileIOCalculator, object):
         """
         s = ['\n', 'Vasp calculation directory:']
         s += ['---------------------------']
-        s += ['  [[{self.directory}]]'.format(self=self)]
+        s += ['  [[{self.calc_dir}]]'.format(self=self)]
 
         atoms = self.get_atoms()
         cell = atoms.get_cell()
@@ -556,7 +556,7 @@ class Vasp(FileIOCalculator, object):
                 constraints[constraint.a] = constraint.mask.tolist()
 
         forces = self.results.get('forces', np.array([[np.nan, np.nan, np.nan]
-                                                      for atom in self.atoms]))
+                                                      for atom in self._atoms]))
 
         for i, atom in enumerate(atoms):
             rms_f = np.sum(forces[i] ** 2) ** 0.5
@@ -602,19 +602,19 @@ class Vasp(FileIOCalculator, object):
         """
 
         if label is None:
-            self.directory = os.path.abspath(".")
+            self.calc_dir = os.path.abspath(".")
             self.prefix = None
         else:
             d = os.path.expanduser(label)
             d = os.path.abspath(d)
-            self.directory, self.prefix = d, None
-            if not os.path.isdir(self.directory):
-                os.makedirs(self.directory)
+            self.calc_dir, self.prefix = d, None
+            if not os.path.isdir(self.calc_dir):
+                os.makedirs(self.calc_dir)
 
         # Convenient attributes for file names
         for f in ['INCAR', 'POSCAR', 'CONTCAR', 'POTCAR',
                   'KPOINTS', 'OUTCAR']:
-            fname = os.path.join(self.directory, f)
+            fname = os.path.join(self.calc_dir, f)
             setattr(self, f.lower(), fname)
 
     def check_state(self, atoms=None):
@@ -623,12 +623,12 @@ class Vasp(FileIOCalculator, object):
             atoms = self.get_atoms()
 
         log.debug('atoms IMM: {}'.format(atoms.get_initial_magnetic_moments()))
-        system_changes = FileIOCalculator.check_state(self, atoms)
+        system_changes = ASE_Vasp.check_state(self, atoms)
         # Ignore boundary conditions:
         if 'pbc' in system_changes:
             system_changes.remove('pbc')
 
-        s = 'FileIOCalculator reports these changes: {}'
+        s = 'ASE Vasp Calculator reports these changes: {}'
         log.debug(s.format(system_changes))
         # if dir is empty, there is nothing to read here.
         if self.get_state() == Vasp.EMPTY:
@@ -704,7 +704,7 @@ class Vasp(FileIOCalculator, object):
         return system_changes
 
     def reset(self):
-        """overwrite to avoid killing self.atoms."""
+        """overwrite to avoid killing self._atoms."""
         log.debug('Resetting calculator.')
         self.results = {}
 
@@ -759,7 +759,7 @@ class Vasp(FileIOCalculator, object):
 
         import shutil
         if not os.path.isdir(newdir):
-            shutil.copytree(self.directory, newdir)
+            shutil.copytree(self.calc_dir, newdir)
 
             # need some cleanup here. do not copy jobids, etc...
             # What survives depends on the state
@@ -789,14 +789,14 @@ class Vasp(FileIOCalculator, object):
         """
         # We do not check for KPOINTS here. That file may not exist if
         # the kspacing incar parameter is used.
-        base_input = [os.path.exists(os.path.join(self.directory, f))
+        base_input = [os.path.exists(os.path.join(self.calc_dir, f))
                       for f in ['INCAR', 'POSCAR', 'POTCAR']]
 
         # Check for NEB first.
         if (os.path.exists(self.incar) and
             os.path.exists(self.potcar) and
             not os.path.exists(self.poscar) and
-            os.path.isdir(os.path.join(self.directory, '00'))):
+            os.path.isdir(os.path.join(self.calc_dir, '00'))):
             return Vasp.NEB
 
         # Some input does not exist
@@ -807,16 +807,11 @@ class Vasp(FileIOCalculator, object):
         # Input files exist, but no jobid, and no output
         elif (all(base_input) and
             self.get_db('jobid') is None and
-            # not os.path.exists(os.path.join(self.directory, 'OUTCAR'))):
+            # not os.path.exists(os.path.join(self.calc_dir, 'OUTCAR'))):
             not os.path.exists(self.outcar)):
             return Vasp.NEW
 
-        # INPUT files exist, a jobid in the queue
-        elif self.in_queue():
-            return Vasp.QUEUED
-
-        # Not in queue
-        elif not self.in_queue():
+        else:
             if os.path.exists(self.outcar):
                 with open(self.outcar) as f:
                     lines = f.readlines()
@@ -923,7 +918,7 @@ class Vasp(FileIOCalculator, object):
             return tatoms
 
         LOA = []
-        for atoms in read(os.path.join(self.directory, 'vasprun.xml'), ':'):
+        for atoms in read(os.path.join(self.calc_dir, 'vasprun.xml'), ':'):
             catoms = atoms.copy()
             catoms = catoms[self.resort]
             catoms.set_calculator(SPC(catoms,
@@ -989,10 +984,6 @@ class Vasp(FileIOCalculator, object):
             Vasp.wait(**wait)
         else:
             Vasp.wait()
-
-    def _run(self):
-        """Convenience function to run the calculator."""
-        return self.potential_energy
 
     @classmethod
     def all(cls):
@@ -1104,7 +1095,7 @@ class Vasp(FileIOCalculator, object):
         import os
 
         # split the path by directory as a kind of set of tags.
-        path, folder = self.directory, ''
+        path, folder = self.calc_dir, ''
         folders = []
         while path != '/':
             if folder != '':
@@ -1113,7 +1104,7 @@ class Vasp(FileIOCalculator, object):
             path, folder = os.path.split(path)
 
         d = OrderedDict(name='Vasp',
-                        path=self.directory,
+                        path=self.calc_dir,
                         pathtags=folders)
 
         d.update(parameters=self.parameters)

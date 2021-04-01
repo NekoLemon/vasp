@@ -228,7 +228,7 @@ def read_atoms(self):
     if resort is not None:
         resort = list(resort)
         from ase.db import connect
-        with connect(os.path.join(self.directory, 'DB.db')) as con:
+        with connect(os.path.join(self.calc_dir, 'DB.db')) as con:
             temp_atoms = con.get_atoms(id=1)
             tags = temp_atoms.get_tags()
     else:
@@ -236,15 +236,15 @@ def read_atoms(self):
 
     log.debug('resort = {}'.format(resort))
 
-    vasprun_xml = os.path.join(self.directory,
+    vasprun_xml = os.path.join(self.calc_dir,
                                'vasprun.xml')
     if os.path.exists(vasprun_xml):
         atoms = ase.io.read(vasprun_xml)
         if resort is not None:
             atoms = atoms[resort]
         atoms.set_tags(tags)
-    elif os.path.exists(os.path.join(self.directory, 'POSCAR')):
-        atoms = ase.io.read(os.path.join(self.directory,
+    elif os.path.exists(os.path.join(self.calc_dir, 'POSCAR')):
+        atoms = ase.io.read(os.path.join(self.calc_dir,
                                          'POSCAR'))
         if resort is not None:
             atoms = atoms[resort]
@@ -263,7 +263,7 @@ def read(self, restart=None):
 
     """
 
-    log.debug('Reading {}'.format(self.directory))
+    log.debug('Reading {}'.format(self.calc_dir))
 
     # NEB is special and handled separately
     if self.get_state() == Vasp.NEB:
@@ -359,7 +359,7 @@ def read_results(self):
     """
     state = self.get_state()
     log.debug('state: {}. Reading results in {}.'.format(state,
-                                                         self.directory))
+                                                         self.calc_dir))
     if state == Vasp.NEB:
         # This is handled in self.read()
         return
@@ -368,13 +368,13 @@ def read_results(self):
         self.results = {}
     else:
         # regular calculation that is finished
-        if not os.path.exists(os.path.join(self.directory,
+        if not os.path.exists(os.path.join(self.calc_dir,
                                            'vasprun.xml')):
-            exc = 'No vasprun.xml in {}'.format(self.directory)
+            exc = 'No vasprun.xml in {}'.format(self.calc_dir)
             raise vasp.exceptions.VaspNotFinished(exc)
 
         # this has a single-point calculator on it. but no tags.
-        atoms = ase.io.read(os.path.join(self.directory,
+        atoms = ase.io.read(os.path.join(self.calc_dir,
                                          'vasprun.xml'))
 
         energy = atoms.get_potential_energy()
@@ -403,7 +403,7 @@ def read_results(self):
         magnetic_moment = 0
         magnetic_moments = np.zeros(len(atoms))
         if self.parameters.get('ispin', 0) == 2:
-            lines = open(os.path.join(self.directory, 'OUTCAR'),
+            lines = open(os.path.join(self.calc_dir, 'OUTCAR'),
                          'r').readlines()
             for n, line in enumerate(lines):
                 if line.startswith(' number of electron  '):
@@ -411,7 +411,7 @@ def read_results(self):
                         magnetic_moment = float(line.split()[-1])
                     except:
                         print('magmom read error')
-                        print((self.directory, line))
+                        print((self.calc_dir, line))
 
                 if line.rfind('magnetization (x)') > -1:
                     for m in range(len(atoms)):
@@ -429,9 +429,9 @@ def read_neb(self):
     log.debug('Reading an NEB')
     import glob
     images = []
-    #images += [ase.io.read('{}/00/POSCAR'.format(self.directory))]
-    #log.debug(glob.glob('{}/0[0-9]/CONTCAR'.format(self.directory)))
-    for p in glob.glob('{}/0[0-9]*'.format(self.directory)):
+    #images += [ase.io.read('{}/00/POSCAR'.format(self.calc_dir))]
+    #log.debug(glob.glob('{}/0[0-9]/CONTCAR'.format(self.calc_dir)))
+    for p in glob.glob('{}/0[0-9]*'.format(self.calc_dir)):
         log.debug('Looking at {}'.format(p))
         CONTCAR = os.path.join(p, 'CONTCAR')
         POSCAR = os.path.join(p, 'POSCAR')

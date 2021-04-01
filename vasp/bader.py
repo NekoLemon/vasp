@@ -12,7 +12,7 @@ def chgsum(self):
     """Uses the chgsum.pl utility to sum over the AECCAR0 and AECCAR2 files."""
     cwd = os.getcwd()
     try:
-        os.chdir(self.directory)
+        os.chdir(self.calc_dir)
         cmdlist = ['chgsum.pl',
                    'AECCAR0',
                    'AECCAR2']
@@ -35,7 +35,7 @@ def bader(self, cmd=None, ref=False, verbose=False, overwrite=False):
     """
     cwd = os.getcwd()
     try:
-        os.chdir(self.directory)
+        os.chdir(self.calc_dir)
 
         if 'ACF.dat' in os.listdir(".") and not overwrite:
             self._get_calculated_charges()
@@ -60,7 +60,7 @@ def bader(self, cmd=None, ref=False, verbose=False, overwrite=False):
         if out == '' or err != '':
             raise Exception('Cannot perform Bader:\n\n{0}'.format(err))
         elif verbose:
-            print('Bader completed for {0}'.format(self.directory))
+            print('Bader completed for {0}'.format(self.calc_dir))
 
         # Now store the calculated charges
         self._get_calculated_charges()
@@ -83,7 +83,7 @@ def _get_calculated_charges(self,
     """
 
     if fileobj is None:
-        fileobj = os.path.join(self.directory, 'ACF.dat')
+        fileobj = os.path.join(self.calc_dir, 'ACF.dat')
 
     if isinstance(fileobj, str):
             fileobj = open(fileobj)

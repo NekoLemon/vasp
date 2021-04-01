@@ -17,7 +17,7 @@ def get_db(self, *keys):
     First look for key/value, then in data.
 
     """
-    dbfile = os.path.join(self.directory, 'DB.db')
+    dbfile = os.path.join(self.calc_dir, 'DB.db')
 
     if not os.path.exists(dbfile):
         return [None for key in keys] if len(keys) > 1 else None
@@ -52,7 +52,7 @@ def get_beefens(self, n=-1):
     """
     self.update()
     beefens = []
-    with open(os.path.join(self.directory, 'OUTCAR')) as f:
+    with open(os.path.join(self.calc_dir, 'OUTCAR')) as f:
         lines = f.readlines()
         for i, line in enumerate(lines):
             if 'BEEFens' in line:
@@ -71,7 +71,7 @@ def get_ibz_k_points(self, cartesian=True):
     """
     self.update()
 
-    with open(os.path.join(self.directory,
+    with open(os.path.join(self.calc_dir,
                            'vasprun.xml')) as f:
         tree = ElementTree.parse(f)
         # each weight is in a <v>w</v> element in this varray
@@ -94,7 +94,7 @@ def get_occupation_numbers(self, kpt=0, spin=0):
     """
     self.update()
 
-    with open(os.path.join(self.directory,
+    with open(os.path.join(self.calc_dir,
                            'vasprun.xml')) as f:
         tree = ElementTree.parse(f)
         path = '/'.join(['calculation',
@@ -114,7 +114,7 @@ def get_k_point_weights(self):
     """Return the k-point weights."""
     self.update()
 
-    with open(os.path.join(self.directory,
+    with open(os.path.join(self.calc_dir,
                            'vasprun.xml')) as f:
         tree = ElementTree.parse(f)
         # each weight is in a <v>w</v> element in this varray
@@ -139,7 +139,7 @@ def get_number_of_spins(self):
 def get_eigenvalues(self, kpt=0, spin=1):
     """Return array of eigenvalues for kpt and spin."""
     self.update()
-    with open(os.path.join(self.directory,
+    with open(os.path.join(self.calc_dir,
                            'vasprun.xml')) as f:
         tree = ElementTree.parse(f)
         path = '/'.join(['calculation',
@@ -160,7 +160,7 @@ def get_fermi_level(self):
     """Return the Fermi level."""
     self.update()
 
-    with open(os.path.join(self.directory,
+    with open(os.path.join(self.calc_dir,
                            'vasprun.xml')) as f:
         tree = ElementTree.parse(f)
         path = '/'.join(['calculation',
@@ -183,7 +183,7 @@ def get_ados(self, atom_index, orbital, spin=1, efermi=None):
     """
     self.update()
 
-    with open(os.path.join(self.directory,
+    with open(os.path.join(self.calc_dir,
                            'vasprun.xml')) as f:
         tree = ElementTree.parse(f)
 
@@ -223,10 +223,10 @@ def get_elapsed_time(self):
     import re
     regexp = re.compile('Elapsed time \(sec\):\s*(?P<time>[0-9]*\.[0-9]*)')
 
-    if not os.path.exists(os.path.join(self.directory, 'OUTCAR')):
+    if not os.path.exists(os.path.join(self.calc_dir, 'OUTCAR')):
         return None
 
-    with open(os.path.join(self.directory, 'OUTCAR')) as f:
+    with open(os.path.join(self.calc_dir, 'OUTCAR')) as f:
         lines = f.readlines()
 
     # fragile but fast.
@@ -243,7 +243,7 @@ def get_elapsed_time(self):
 def get_default_number_of_electrons(self, filename=None):
     """Return the default electrons for each species."""
     if filename is None:
-        filename = os.path.join(self.directory, 'POTCAR')
+        filename = os.path.join(self.calc_dir, 'POTCAR')
 
     if not os.path.exists(filename):
         self.write_input()
@@ -285,7 +285,7 @@ def get_volumetric_data(self, filename=None, **kwargs):
     """
     self.update()
     if filename is None:
-        filename = os.path.join(self.directory, 'CHG')
+        filename = os.path.join(self.calc_dir, 'CHG')
 
     from .VaspChargeDensity import VaspChargeDensity
 
@@ -341,7 +341,7 @@ def get_charge_density(self, spin=0, filename=None):
         return None, None, None, None
 
     if filename is None:
-        filename = os.path.join(self.directory, 'CHG')
+        filename = os.path.join(self.calc_dir, 'CHG')
 
     if os.path.exists(filename):
         x, y, z, data = get_volumetric_data(self, filename=filename)
@@ -359,7 +359,7 @@ def get_local_potential(self):
     """
     self.update()
 
-    fname = os.path.join(self.directory, 'LOCPOT')
+    fname = os.path.join(self.calc_dir, 'LOCPOT')
     x, y, z, data = get_volumetric_data(self, filename=fname)
     atoms = self.get_atoms()
     return x, y, z, data[0] * atoms.get_volume()
@@ -372,7 +372,7 @@ def get_elf(self):
         "lelf is not set to True!"
 
     self.update()
-    fname = os.path.join(self.directory, 'ELFCAR')
+    fname = os.path.join(self.calc_dir, 'ELFCAR')
     x, y, z, data = get_volumetric_data(self, filename=fname)
     atoms = self.get_atoms()
     return x, y, z, data[0] * atoms.get_volume()
@@ -519,7 +519,7 @@ def get_memory(self):
     found, return None
     """
 
-    OUTCAR = os.path.join(self.directory, 'OUTCAR')
+    OUTCAR = os.path.join(self.calc_dir, 'OUTCAR')
     if os.path.exists(OUTCAR):
         with open(OUTCAR) as f:
             lines = f.readlines()
@@ -551,7 +551,7 @@ def get_orbital_occupations(self):
 
     # this finds the last entry of occupations. Sometimes, this is
     # printed multiple times in the OUTCAR.
-    with open(os.path.join(self.directory,
+    with open(os.path.join(self.calc_dir,
                            'OUTCAR'), 'r') as f:
         lines = f.readlines()
         start = None
@@ -576,11 +576,11 @@ def get_orbital_occupations(self):
 def get_number_of_ionic_steps(self):
     """Returns number of ionic steps from the OUTCAR."""
 
-    if not os.path.exists(os.path.join(self.directory, 'OUTCAR')):
+    if not os.path.exists(os.path.join(self.calc_dir, 'OUTCAR')):
         return None
 
     nsteps = None
-    for line in open(os.path.join(self.directory, 'OUTCAR')):
+    for line in open(os.path.join(self.calc_dir, 'OUTCAR')):
         # find the last iteration number
         if line.find('- Iteration') != -1:
             nsteps = int(line.split('(')[0].split()[-1].strip())
@@ -637,10 +637,10 @@ def get_charges(self, atoms=None):
 @monkeypatch_class(Vasp)
 def get_program_info(self):
     """Return data about the vasp that was used for the calculation."""
-    if not os.path.exists(os.path.join(self.directory, 'vasprun.xml')):
+    if not os.path.exists(os.path.join(self.calc_dir, 'vasprun.xml')):
         return None, None, None, None, None
 
-    with open(os.path.join(self.directory, 'vasprun.xml')) as f:
+    with open(os.path.join(self.calc_dir, 'vasprun.xml')) as f:
         tree = ElementTree.parse(f)
         program = tree.find("generator/i[@name='program']").text
         version = tree.find("generator/i[@name='version']").text

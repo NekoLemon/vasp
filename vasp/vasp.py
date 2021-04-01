@@ -23,7 +23,6 @@ import vasp.setters
 import vasp.vib
 import vasp.neb
 import vasp.serialize
-import vasp.runner
 import vasp.bader
 import vasp.bandstructure
 import vasp.elastic_moduli

@@ -26,7 +26,7 @@ def get_elastic_moduli(self):
 
     self.update()
 
-    with open(os.path.join(self.directory, 'OUTCAR')) as f:
+    with open(os.path.join(self.calc_dir, 'OUTCAR')) as f:
         lines = f.readlines()
 
     TEM = []
